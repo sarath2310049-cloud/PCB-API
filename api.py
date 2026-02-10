@@ -9,7 +9,6 @@ import os
 
 app = FastAPI()
 
-# Enable CORS (allows your laptop to connect)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,23 +16,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Model configuration
 MODEL_PATH = "pcb_model.h5"
 MODEL_URL = "https://drive.google.com/uc?id=15NeEfT7106PH6RnolnhPdHWwHLMz49yC"
 
-# Load model
 def load_model():
     if not os.path.exists(MODEL_PATH):
-        print("📥 Downloading model from Google Drive...")
+        print("Downloading model from Google Drive...")
         gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-        print("✅ Model downloaded!")
+        print("Model downloaded!")
     
-    print("🔄 Loading model...")
+    print("Loading model...")
     model = tf.keras.models.load_model(MODEL_PATH)
-    print("✅ Model loaded!")
+    print("Model loaded!")
     return model
 
-# Load model at startup
 model = load_model()
 
 @app.get("/")
@@ -46,26 +42,19 @@ def home():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    """Prediction endpoint for Basler camera"""
-    
     try:
-        # Read image
         contents = await file.read()
         img = Image.open(io.BytesIO(contents))
         
-        # Convert to RGB if needed
         if img.mode != 'RGB':
             img = img.convert('RGB')
         
-        # Preprocess
         img = img.resize((128, 128))
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
         
-        # Predict
         prediction = float(model.predict(img_array, verbose=0)[0][0])
         
-        # Interpret
         if prediction > 0.5:
             result = "UNDEFECTIVE"
             confidence = prediction * 100
@@ -89,5 +78,3 @@ async def predict(file: UploadFile = File(...)):
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "model_loaded": model is not None}
-```
-
